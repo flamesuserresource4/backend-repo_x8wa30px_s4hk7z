@@ -1,48 +1,92 @@
 """
-Database Schemas
+Database Schemas for Vintage Clothier
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a MongoDB collection. The collection name is the lowercase
+of the class name (e.g., Product -> "product").
 """
-
+from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
-from typing import Optional
 
-# Example schemas (replace with your own):
-
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
 
 class Product(BaseModel):
     """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
+    Premium products we offer (suits, boots, shirts, hats, belts, trousers)
     """
     title: str = Field(..., description="Product title")
     description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+    category: str = Field(..., description="Category: suit, boots, shoes, hat, belt, shirt, trousers")
+    base_price: float = Field(..., ge=0, description="Base price in USD")
+    images: List[str] = Field(default_factory=list, description="Image URLs")
+    colors: List[str] = Field(default_factory=list)
+    fabrics: List[str] = Field(default_factory=list)
+    sizes: List[str] = Field(default_factory=list)
+    fits: List[str] = Field(default_factory=list)
+    patterns: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    in_stock: bool = Field(True)
 
-# Add your own schemas here:
-# --------------------------------------------------
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Measurement(BaseModel):
+    height_cm: Optional[float] = Field(None, ge=100, le=230)
+    weight_kg: Optional[float] = Field(None, ge=35, le=200)
+    chest_cm: Optional[float] = Field(None, ge=60, le=150)
+    waist_cm: Optional[float] = Field(None, ge=50, le=150)
+    hips_cm: Optional[float] = Field(None, ge=60, le=160)
+    sleeve_cm: Optional[float] = Field(None, ge=40, le=80)
+    inseam_cm: Optional[float] = Field(None, ge=60, le=100)
+
+
+class Customization(BaseModel):
+    """A user's configured product"""
+    product_id: Optional[str] = Field(None, description="Target product")
+    category: str = Field(..., description="Category being customized")
+    color: Optional[str] = None
+    fabric: Optional[str] = None
+    size: Optional[str] = None
+    fit: Optional[str] = None
+    pattern: Optional[str] = None
+    preferences: Optional[str] = Field(None, description="Free text preferences")
+    auto: bool = Field(False, description="If true, system will auto-complete best choices")
+    measurements: Optional[Measurement] = None
+
+
+class Order(BaseModel):
+    user_name: str
+    email: str
+    customization: Customization
+    total_price: float
+    status: str = Field("pending")
+
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="user or assistant")
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+class RecommendationRequest(BaseModel):
+    purpose: Optional[str] = Field(None, description="Occasion/purpose e.g. wedding, business, casual")
+    style: Optional[str] = Field(None, description="classic, vintage, modern, rugged")
+    climate: Optional[str] = Field(None, description="hot, temperate, cold")
+    budget: Optional[float] = Field(None, ge=0)
+    category: Optional[str] = None
+    colors: Optional[List[str]] = None
+
+
+class Recommendation(BaseModel):
+    product_id: Optional[str] = None
+    title: str
+    category: str
+    suggested_config: Dict[str, Optional[str]]
+    est_price: float
+    rationale: str
+
+
+class RecommendationResponse(BaseModel):
+    recommendations: List[Recommendation]
+
+
+# Note: The Flames database viewer reads these models via GET /schema.
